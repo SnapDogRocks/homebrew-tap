@@ -1,0 +1,34 @@
+name: Test Formulas
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Formula/*.rb"
+      - ".github/workflows/test.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "Formula/*.rb"
+      - ".github/workflows/test.yml"
+  workflow_dispatch:
+
+jobs:
+  audit:
+    name: Audit formulas
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+
+      - name: Tap local formula repository
+        run: brew tap snapdogrocks/tap "$GITHUB_WORKSPACE"
+
+      - name: Audit SnapDog formulas
+        run: |
+          brew audit --strict --online snapdogrocks/tap/snapdog
+          brew audit --strict --online snapdogrocks/tap/snapdog-client
