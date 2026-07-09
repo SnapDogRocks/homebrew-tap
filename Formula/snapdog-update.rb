@@ -1,16 +1,16 @@
 class SnapdogUpdate < Formula
-  desc "Firmware update tool for SnapDog OS"
+  desc "Firmware update client for SnapDog OS"
   homepage "https://github.com/SnapDogRocks/snapdog-os"
   license "GPL-3.0-only"
-  version "0.7.2"
+  version "0.3.1"
 
   on_macos do
     if Hardware::CPU.intel?
-      url "https://github.com/SnapDogRocks/snapdog-os/releases/download/v0.7.2/snapdog-update-v0.7.2-x86_64-apple-darwin.tar.gz"
-      sha256 "5becc6e0757b747f4b6c6df46ecc72c690d2bef5ce0e9638a96c8ce371cc6a8f"
+      url "https://github.com/SnapDogRocks/snapdog-os/releases/download/snapdog-update-v0.3.1/snapdog-update-snapdog-update-v0.3.1-x86_64-apple-darwin.tar.gz"
+      sha256 "9334010a2f792f49815d393a68a3700d2a55845bf206c18013c7241d1d21939c"
     else
-      url "https://github.com/SnapDogRocks/snapdog-os/releases/download/v0.7.2/snapdog-update-v0.7.2-aarch64-apple-darwin.tar.gz"
-      sha256 "0b0225879f70ef0c452e97b5ad0bd890b40f71e06653ec71ab1e39fd835bb7e0"
+      url "https://github.com/SnapDogRocks/snapdog-os/releases/download/snapdog-update-v0.3.1/snapdog-update-snapdog-update-v0.3.1-aarch64-apple-darwin.tar.gz"
+      sha256 "828f31592327b27d8a566a8d328c4fc03b6a3b276e72f2e1fba0d07abdb1edc8"
     end
   end
 
