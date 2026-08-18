@@ -5,11 +5,11 @@ class Snapdog < Formula
 
   on_macos do
     if Hardware::CPU.intel?
-      url "https://github.com/SnapDogRocks/snapdog/releases/download/v0.27.0/snapdog-v0.27.0-x86_64-apple-darwin.tar.gz"
-      sha256 "46c07fa60ae7707b6f886e3018ffaed55d2f5bae2bb74ea95cf6c082a359b025"
+      url "https://github.com/SnapDogRocks/snapdog/releases/download/v0.27.1/snapdog-v0.27.1-x86_64-apple-darwin.tar.gz"
+      sha256 "f0470420908c86ceaf6eb644442c05d9d446a655a730395c08ccb4ea1f284f0c"
     else
-      url "https://github.com/SnapDogRocks/snapdog/releases/download/v0.27.0/snapdog-v0.27.0-aarch64-apple-darwin.tar.gz"
-      sha256 "71efadee46825899d54b53337412400e0ce1e2b15c32972f4639b5c9b9f056ad"
+      url "https://github.com/SnapDogRocks/snapdog/releases/download/v0.27.1/snapdog-v0.27.1-aarch64-apple-darwin.tar.gz"
+      sha256 "6493423ebe1a4758bc7fa7f7c7bde1384f35980a4a63b79af1d61eeaeaee2a52"
     end
   end
 
