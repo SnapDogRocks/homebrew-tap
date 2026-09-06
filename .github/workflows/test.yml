@@ -100,10 +100,12 @@ jobs:
       # what proves the archive downloads and matches its recorded checksum, and
       # a wrong checksum is the failure users would meet first.
       #
-      # `brew test` is deliberately absent. `snapdog-update` reports its own
-      # version, which does not follow the snapdog-os release tag the formula is
-      # versioned from, so the assertion in its test block cannot hold. That is a
-      # formula question of its own, not a gate question.
+      # `brew test` is deliberately absent for now. The published
+      # `snapdog-update` formula is versioned 0.16.6 from the snapdog-os release
+      # tag while the binary reports 0.4.1, its own release-please version, so
+      # the assertion in that formula's test block cannot hold. The cause sits in
+      # the publisher, not in the formula, and once the formula carries the
+      # package's own version again this lane can run `brew test` as well.
       - name: Audit and install
         env:
           FORMULA: ${{ matrix.formula }}
