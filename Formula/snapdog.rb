@@ -2,7 +2,6 @@ class Snapdog < Formula
   desc "Multi-zone audio controller with AirPlay, Snapcast, MQTT, and KNX"
   homepage "https://github.com/SnapDogRocks/snapdog"
   license "GPL-3.0-only"
-  version "0.27.4"
 
   on_macos do
     if Hardware::CPU.intel?
