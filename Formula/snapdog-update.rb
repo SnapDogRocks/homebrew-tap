@@ -2,7 +2,6 @@ class SnapdogUpdate < Formula
   desc "Firmware update tool for SnapDog OS"
   homepage "https://github.com/SnapDogRocks/snapdog-os"
   license "GPL-3.0-only"
-  version "0.16.6"
 
   on_macos do
     if Hardware::CPU.intel?

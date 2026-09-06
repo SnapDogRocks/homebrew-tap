@@ -1,31 +1,144 @@
-name: Test Formulas
+name: Qualify formulas
 
 on:
+  # Deliberately without a path filter. A required check has to appear on every
+  # pull request; a filtered trigger leaves it missing on a pull request that
+  # touches only the README, and such a pull request can then never be merged.
+  pull_request:
+    branches: [main]
   push:
     branches: [main]
     paths:
-      - "Formula/*.rb"
-      - ".github/workflows/test.yml"
-  pull_request:
-    branches: [main]
-    paths:
-      - "Formula/*.rb"
-      - ".github/workflows/test.yml"
+      - 'Formula/*.rb'
+      - '.github/workflows/test.yml'
   workflow_dispatch:
+    inputs:
+      formula:
+        description: Formula name to qualify; blank selects every formula
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: formula-qualification-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  audit:
-    name: Audit formulas
-    runs-on: macos-latest
-
+  discover:
+    name: Discover changed formulas
+    runs-on: ubuntu-24.04
+    outputs:
+      formulas: ${{ steps.formulas.outputs.formulas }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Set up Homebrew
-        uses: Homebrew/actions/setup-homebrew@main
-
-      - name: Audit SnapDog formulas
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - name: Resolve the closed formula set
+        id: formulas
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_BEFORE: ${{ github.event.before }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          DISPATCH_FORMULA: ${{ inputs.formula }}
         run: |
-          brew audit --strict --online snapdogrocks/tap/snapdog
-          brew audit --strict --online snapdogrocks/tap/snapdog-client
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
+            if [[ -n "$DISPATCH_FORMULA" ]]; then
+              if [[ ! "$DISPATCH_FORMULA" =~ ^[a-z0-9][a-z0-9@+._-]*$ ]]; then
+                echo "::error::invalid formula name"
+                exit 1
+              fi
+              changed="Formula/${DISPATCH_FORMULA}.rb"
+              if [[ ! -f "$changed" ]]; then
+                echo "::error::formula does not exist: $DISPATCH_FORMULA"
+                exit 1
+              fi
+            else
+              changed=$(find Formula -maxdepth 1 -type f -name '*.rb' -print | sort)
+            fi
+          else
+            base=$EVENT_BEFORE
+            if [[ "$EVENT_NAME" == pull_request ]]; then
+              base=$PR_BASE_SHA
+            elif [[ -z "$base" || "$base" =~ ^0+$ ]]; then
+              base=$(git rev-list --max-parents=0 HEAD)
+            fi
+            changed=$(git diff --name-only --diff-filter=ACMR "$base" HEAD -- 'Formula/*.rb')
+          fi
+          formulas=$(printf '%s\n' "$changed" | sed -n 's#^Formula/\(.*\)\.rb$#\1#p' | sort -u)
+          formulas_json=$(printf '%s\n' "$formulas" | jq -Rsc \
+            'split("\n") | map(select(length > 0))')
+          echo "formulas=$formulas_json" >> "$GITHUB_OUTPUT"
+          printf 'Changed formulas: %s\n' "$formulas_json"
+
+  qualify:
+    name: ${{ matrix.formula }} on ${{ matrix.runner }}
+    if: needs.discover.outputs.formulas != '[]'
+    needs: discover
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        formula: ${{ fromJSON(needs.discover.outputs.formulas) }}
+        # Both architectures, because the formulas carry a separate URL and
+        # checksum per architecture and only the matching one is exercised here.
+        runner: [macos-15, macos-15-intel]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      # Symlinks this checkout into Homebrew's tap directory, so the audit below
+      # reads the formula under review rather than the published one.
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@3cdb78d0f62ad29dd32de765782654f4eedea607
+        with:
+          core: false
+          cask: false
+      # `brew audit --online` only checks that the URL resolves. The install is
+      # what proves the archive downloads and matches its recorded checksum, and
+      # a wrong checksum is the failure users would meet first.
+      #
+      # `brew test` is deliberately absent. `snapdog-update` reports its own
+      # version, which does not follow the snapdog-os release tag the formula is
+      # versioned from, so the assertion in its test block cannot hold. That is a
+      # formula question of its own, not a gate question.
+      - name: Audit and install
+        env:
+          FORMULA: ${{ matrix.formula }}
+          HOMEBREW_NO_AUTO_UPDATE: '1'
+        run: |
+          set -euo pipefail
+          brew audit --strict --online "snapdogrocks/tap/$FORMULA"
+          brew install "snapdogrocks/tap/$FORMULA"
+      - name: Remove the qualification install
+        if: always()
+        env:
+          FORMULA: ${{ matrix.formula }}
+        run: brew uninstall "$FORMULA" >/dev/null 2>&1 || true
+
+  gate:
+    # The single name a branch rule can require. It exists on every pull request,
+    # including one that changes no formula, and it fails when any applicable
+    # lane failed.
+    name: Formula qualification
+    if: always()
+    needs: [discover, qualify]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Enforce every applicable lane
+        env:
+          DISCOVER_RESULT: ${{ needs.discover.result }}
+          QUALIFY_RESULT: ${{ needs.qualify.result }}
+        run: |
+          set -euo pipefail
+          if [[ "$DISCOVER_RESULT" != success ]]; then
+            echo "::error::formula discovery ended with $DISCOVER_RESULT"
+            exit 1
+          fi
+          # "skipped" is the correct outcome when no formula changed.
+          if [[ "$QUALIFY_RESULT" != success && "$QUALIFY_RESULT" != skipped ]]; then
+            echo "::error::formula qualification ended with $QUALIFY_RESULT"
+            exit 1
+          fi
