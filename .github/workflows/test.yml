@@ -100,12 +100,8 @@ jobs:
       # what proves the archive downloads and matches its recorded checksum, and
       # a wrong checksum is the failure users would meet first.
       #
-      # `brew test` is deliberately absent for now. The published
-      # `snapdog-update` formula is versioned 0.16.6 from the snapdog-os release
-      # tag while the binary reports 0.4.1, its own release-please version, so
-      # the assertion in that formula's test block cannot hold. The cause sits in
-      # the publisher, not in the formula, and once the formula carries the
-      # package's own version again this lane can run `brew test` as well.
+      # The updater now uses its own package version, so its executable must
+      # report the same version that Homebrew infers from the archive URL.
       - name: Audit and install
         env:
           FORMULA: ${{ matrix.formula }}
@@ -114,6 +110,9 @@ jobs:
           set -euo pipefail
           brew audit --strict --online "snapdogrocks/tap/$FORMULA"
           brew install "snapdogrocks/tap/$FORMULA"
+          if [[ "$FORMULA" == snapdog-update ]]; then
+            brew test "snapdogrocks/tap/$FORMULA"
+          fi
       - name: Remove the qualification install
         if: always()
         env:
